@@ -1,0 +1,55 @@
+name: Build and Release OMV Package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper devscripts
+
+      - name: Build Debian package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Stage Debian package
+        run: |
+          mkdir -p dist
+          cp ../openmediavault-intelgpustats_*.deb dist/
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmediavault-intelgpustats-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Debian package
+        uses: actions/download-artifact@v4
+        with:
+          name: openmediavault-intelgpustats-deb
+          path: dist
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          files: dist/*.deb

@@ -1,0 +1,24 @@
+Source: openmediavault-intelgpustats
+Section: net
+XB-Plugin-Section: filesystems
+Priority: optional
+Maintainer: OpenMediaVault Plugin Developers <plugins@omv-extras.org>
+Build-Depends: debhelper (>= 13)
+Standards-Version: 4.3.0
+Homepage: http://omv-extras.org/
+
+Package: openmediavault-intelgpustats
+Architecture: all
+Depends:
+ openmediavault (>= 7),
+ ${misc:Depends}
+Recommends:
+ intel-gpu-tools
+Description: Intel GPU statistics dashboard plugin for OpenMediaVault
+ Adds dashboard widgets to OpenMediaVault that display real-time Intel
+ integrated GPU (iGPU) metrics: temperature, render utilisation, GT
+ frequency, and power draw.
+ .
+ Metrics are read from the i915 sysfs interface (always available) and,
+ when the intel-gpu-tools package is installed, from intel_gpu_top for
+ richer utilisation and power data.

@@ -1,0 +1,44 @@
+#!/bin/bash
+# Build the .deb package (run from project root).
+set -e
+
+# Option A – full source build (requires debhelper, devscripts)
+if command -v debuild &>/dev/null; then
+    debuild -us -uc
+    echo "Package built. Look for the .deb in the parent directory."
+    exit 0
+fi
+
+# Option B – quick deb from staged files
+PKGNAME="openmediavault-intelgpustats"
+VERSION="1.0.0"
+STAGEDIR="$(mktemp -d)"
+
+# Copy payload
+cp -r usr "$STAGEDIR/"
+[ -d etc ] && cp -r etc "$STAGEDIR/"
+mkdir -p "$STAGEDIR/usr/share/doc/$PKGNAME"
+cp LICENSE "$STAGEDIR/usr/share/doc/$PKGNAME/copyright"
+
+# Write DEBIAN metadata
+mkdir -p "$STAGEDIR/DEBIAN"
+# Binary control needs only the Package stanza (no Source: line)
+cat > "$STAGEDIR/DEBIAN/control" <<EOF
+Package: openmediavault-intelgpustats
+Version: ${VERSION}
+Architecture: all
+Maintainer: OpenMediaVault Plugin Developers <plugins@omv-extras.org>
+Depends: openmediavault (>= 7)
+Recommends: intel-gpu-tools
+Description: Intel GPU statistics dashboard plugin for OpenMediaVault
+ Adds dashboard widgets for Intel iGPU metrics: temperature, utilisation,
+ frequency, and power draw.
+EOF
+cp debian/postinst  "$STAGEDIR/DEBIAN/postinst"
+cp debian/postrm    "$STAGEDIR/DEBIAN/postrm"
+cp debian/triggers  "$STAGEDIR/DEBIAN/triggers"
+chmod 0755 "$STAGEDIR/DEBIAN/postinst" "$STAGEDIR/DEBIAN/postrm"
+
+dpkg-deb --build "$STAGEDIR" "${PKGNAME}_${VERSION}.deb"
+rm -rf "$STAGEDIR"
+echo "Built ${PKGNAME}_${VERSION}.deb"

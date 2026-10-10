@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -e
+
+. /etc/default/openmediavault
+. /usr/share/openmediavault/scripts/helper-functions
+
+case "$1" in
+    remove|purge)
+        dpkg-trigger update-workbench
+    ;;
+
+    *)
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,13 @@
+version: "1.0"
+type: dashboard-widget
+data:
+  id: 8f4e2b1a-5c6d-4e7f-9b0c-1d2e3f4a5b6c
+  permissions:
+    role:
+      - admin
+      - user
+  title: _("Intel GPU Usage")
+  type: rrd
+  rrd:
+    kind: exec-intelgpu
+    period: hour

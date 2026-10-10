@@ -1,0 +1,9 @@
+*.deb
+*.changes
+*.buildinfo
+*.dsc
+*.tar.gz
+*.tar.xz
+debian/openmediavault-intelgpustats/
+debian/files
+debian/.debhelper/

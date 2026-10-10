@@ -1,0 +1,15 @@
+version: "1.0"
+type: dashboard-widget
+data:
+  id: 7e3f1a2b-4c5d-4e6f-8a9b-0c1d2e3f4a5b
+  permissions:
+    role:
+      - admin
+      - user
+  title: _("Intel GPU")
+  type: text
+  reloadPeriod: 5000
+  text:
+    request:
+      service: IntelGpuStats
+      method: getGpuStats

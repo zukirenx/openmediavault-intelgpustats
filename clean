@@ -1,0 +1,7 @@
+#!/bin/bash
+# Remove build artefacts.
+set -e
+rm -f ../*.deb ../*.changes ../*.buildinfo ../*.dsc ../*.tar.*
+rm -f ./*.deb
+rm -rf debian/openmediavault-intelgpustats
+echo "Cleaned."

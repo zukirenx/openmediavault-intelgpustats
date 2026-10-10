@@ -1,0 +1,101 @@
+#!/bin/sh
+# Collectd exec plugin script for Intel iGPU monitoring.
+# Emits GPU utilisation (RC6-based), temperature, and GT frequency every
+# INTERVAL seconds in collectd PUTVAL format.
+#
+# Runs as nobody – reads only world-readable sysfs files.
+
+HOSTNAME="${COLLECTD_HOSTNAME:-localhost}"
+INTERVAL="${COLLECTD_INTERVAL:-10}"
+PLUGIN_INSTANCE="exec-intelgpu"
+
+# ── Locate Intel GPU DRM card path ────────────────────────────────────────
+CARD_PATH=""
+for VENDOR_FILE in /sys/class/drm/card*/device/vendor; do
+    if [ "$(cat "$VENDOR_FILE" 2>/dev/null)" = "0x8086" ]; then
+        CARD_PATH=$(dirname "$(dirname "$VENDOR_FILE")")   # /sys/class/drm/cardX
+        break
+    fi
+done
+CARD_PATH="${CARD_PATH:-/sys/class/drm/card0}"
+
+# RC6 residency counter (milliseconds, cumulative since boot)
+RC6_PATH="${CARD_PATH}/power/rc6_residency_ms"
+
+# GT current frequency
+FREQ_PATH="${CARD_PATH}/gt_cur_freq_mhz"
+[ ! -f "$FREQ_PATH" ] && FREQ_PATH="${CARD_PATH}/gt/gt0/rps_cur_freq_mhz"
+
+# ── Locate CPU Package temperature (iGPU shares die with CPU) ─────────────
+TEMP_PATH=""
+for NAME_FILE in /sys/class/hwmon/hwmon*/name; do
+    [ "$(cat "$NAME_FILE" 2>/dev/null)" = "coretemp" ] || continue
+    HWMON_DIR=$(dirname "$NAME_FILE")
+    for LABEL_FILE in "${HWMON_DIR}"/temp*_label; do
+        case "$(cat "$LABEL_FILE" 2>/dev/null)" in
+            *[Pp]ackage*)
+                TEMP_PATH="${LABEL_FILE%_label}_input"
+                break 2
+                ;;
+        esac
+    done
+done
+
+# ── Emit one set of PUTVAL lines ──────────────────────────────────────────
+emit_values() {
+    UTIL="$1"
+
+    # GPU utilisation (RC6-derived, 0-100 %)
+    printf 'PUTVAL "%s/%s/percent-utilization" interval=%s N:%s\n' \
+        "$HOSTNAME" "$PLUGIN_INSTANCE" "$INTERVAL" "$UTIL"
+
+    # Package temperature (millidegrees → degrees Celsius)
+    if [ -f "$TEMP_PATH" ]; then
+        TEMP_RAW=$(cat "$TEMP_PATH" 2>/dev/null)
+        if [ -n "$TEMP_RAW" ]; then
+            TEMP=$(awk "BEGIN{printf \"%.1f\", $TEMP_RAW/1000}")
+            printf 'PUTVAL "%s/%s/temperature-gpu_temp" interval=%s N:%s\n' \
+                "$HOSTNAME" "$PLUGIN_INSTANCE" "$INTERVAL" "$TEMP"
+        fi
+    fi
+
+    # GT current frequency (MHz)
+    if [ -f "$FREQ_PATH" ]; then
+        FREQ=$(cat "$FREQ_PATH" 2>/dev/null)
+        [ -n "$FREQ" ] && printf 'PUTVAL "%s/%s/gauge-frequency" interval=%s N:%s\n' \
+            "$HOSTNAME" "$PLUGIN_INSTANCE" "$INTERVAL" "$FREQ"
+    fi
+}
+
+# ── Main loop ─────────────────────────────────────────────────────────────
+if [ ! -f "$RC6_PATH" ]; then
+    # No RC6 counter – emit zero utilisation
+    while true; do
+        emit_values 0
+        sleep "$INTERVAL"
+    done
+    exit 0
+fi
+
+PREV_RC6=$(cat "$RC6_PATH")
+sleep "$INTERVAL"
+
+while true; do
+    CURR_RC6=$(cat "$RC6_PATH")
+
+    # RC6 counter is in ms; window is INTERVAL seconds = INTERVAL*1000 ms.
+    # GPU util% = 100 - (rc6_delta_ms / window_ms * 100)
+    UTIL=$(awk "BEGIN{
+        delta = $CURR_RC6 - $PREV_RC6;
+        window = $INTERVAL * 1000;
+        if (window <= 0 || delta < 0) { print \"0.0\"; exit }
+        rc6 = (delta / window) * 100;
+        if (rc6 > 100) rc6 = 100;
+        printf \"%.1f\", 100 - rc6
+    }")
+
+    emit_values "$UTIL"
+
+    PREV_RC6="$CURR_RC6"
+    sleep "$INTERVAL"
+done

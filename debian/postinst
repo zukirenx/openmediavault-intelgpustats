@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -e
+
+. /etc/default/openmediavault
+. /usr/share/openmediavault/scripts/helper-functions
+
+case "$1" in
+    configure)
+        # Trigger workbench rebuild so the new widgets are picked up.
+        dpkg-trigger update-workbench
+        # Restart collectd to load the new exec plugin for GPU data collection.
+        if systemctl is-active --quiet collectd 2>/dev/null; then
+            systemctl restart collectd || true
+        fi
+    ;;
+
+    triggered)
+        # The update-workbench trigger has fired; nothing extra needed here.
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,7 @@
+openmediavault-intelgpustats (1.0.0) stable; urgency=low
+
+  * Initial release.
+  * Dashboard widgets: temperature, utilisation, frequency, power.
+  * Reads Intel iGPU metrics via i915 sysfs and intel_gpu_top.
+
+ -- OpenMediaVault Plugin Developers <plugins@omv-extras.org>  Mon, 14 Jul 2026 00:00:00 +0000

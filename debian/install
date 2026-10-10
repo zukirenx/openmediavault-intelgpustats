@@ -1,0 +1,4 @@
+usr/share/openmediavault/* usr/share/openmediavault
+usr/share/openmediavault-intelgpustats/* usr/share/openmediavault-intelgpustats
+etc/collectd/collectd.conf.d/intelgpu.conf etc/collectd/collectd.conf.d
+LICENSE usr/share/doc/openmediavault-intelgpustats/copyright
